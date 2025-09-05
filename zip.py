@@ -1,8 +1,12 @@
-import zipfile
+import pyminizip
 import os
+import zipfile
 
-def zip_file(file_path):
+def zip_file(file_path, password: str = None):
     zip_path = file_path + '.zip'
-    with zipfile.ZipFile(zip_path, 'w') as zipf:
-        zipf.write(file_path, os.path.basename(file_path))
+    if password:
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            zipf.write(file_path, os.path.basename(file_path))
+        return zip_path
+    pyminizip.compress(file_path, None, zip_path, password, 5)
     return zip_path

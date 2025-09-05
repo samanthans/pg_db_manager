@@ -1,12 +1,15 @@
 import argparse
 import datetime
-from os import path
+import shutil
 import tempfile
+from os import path
+
 import psycopg
 
 from dump_db import dump_db
 from encrypt import encrypt_file
 from vacuum import vacuum_utility
+from zip import zip_file
 
 parser = argparse.ArgumentParser(
     description="Helper para manutenção de bancos postgresql"
@@ -23,8 +26,15 @@ options.add_argument("--vacuum", action="store_true", help="Realizar o vacuum")
 options.add_argument("--full", action="store_true", help="Vacuum no modo full")
 options.add_argument("--zip", "-z", action="store_true", help="Compactar o backup")
 options.add_argument(
+    "--zip-pwd", type=str, help="Compactar o backup com a senha informada"
+)
+options.add_argument(
     "--encrypt", "-e", action="store_true", help="Criptografar o backup"
 )
+options.add_argument(
+    "--copy", "-c", type=str, help="Armazenar cópia do backup no caminho"
+)
+options.add_argument("--key", type=str, help="Chave para criptografar o backup")
 
 args = parser.parse_args()
 print(args)
@@ -52,23 +62,28 @@ def __main__():
     else:
         tmp_dir = args.path
     filename = get_filename()
-    output_file = path.join(tmp_dir, filename)
+    output_file_path = path.join(tmp_dir, filename)
 
     dump_db(
         db_name=args.db,
-        output_file=output_file,
+        output_file=output_file_path,
         host=args.host,
         port=args.port,
         user=args.user,
         password=args.password,
     )
     if args.encrypt:
-        output_file = encrypt_file(output_file, key="teste")
-    if args.zip:
-        
+        output_file_path = encrypt_file(output_file_path, key="teste")
+    if args.zip_pwd:
+        output_file_path = zip_file(file_path=output_file_path, password=args.zip_pwd)
+    elif args.zip:
+        output_file_path = zip_file(file_path=output_file_path)
 
 
+    if args.copy:
+        shutil.copy2(output_file_path, args.copy)
 
     # No final
     if use_tmp_dir:
+        shutil.copy2(output_file_path, args.path)
         tmp_dir.cleanup()
