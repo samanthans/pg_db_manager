@@ -9,3 +9,10 @@ def encrypt_file(file_path, key):
     with open(file_path + ".enc", "wb") as f:
         f.write(encrypted_data)
     return file_path + ".enc"
+
+
+def generate_key(file_path):
+    key = Fernet.generate_key()
+    with open(file_path + ".key", "wb") as f:
+        f.write(key)
+    return key

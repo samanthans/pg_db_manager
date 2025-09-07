@@ -7,9 +7,9 @@ from os import path
 import psycopg
 
 from dump_db import dump_db
-from encrypt import encrypt_file
+from encrypt import encrypt_file, generate_key
 from vacuum import vacuum_utility
-from zip import zip_file
+from zip_file import zip_file
 
 parser = argparse.ArgumentParser(
     description="Helper para manutenção de bancos postgresql"
@@ -37,7 +37,6 @@ options.add_argument(
 options.add_argument("--key", type=str, help="Chave para criptografar o backup")
 
 args = parser.parse_args()
-print(args)
 
 db = psycopg.connect(
     dbname=args.db,
@@ -48,21 +47,21 @@ db = psycopg.connect(
 )
 
 
-def get_filename():
+def get_filename(db_name: str):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"backup_{timestamp}.dump"
+    return f"{db_name}-backup-{timestamp}.dump"
 
 
 def __main__():
     vacuum_utility(db, force=args.vacuum, full=args.full)
-    use_tmp_dir = False
-    if args.zip or args.encrypt:
-        use_tmp_dir = True
+    tmp_dir = None
+    if args.zip or args.zip_pwd or args.encrypt:
         tmp_dir = tempfile.TemporaryDirectory()
+        dir_path = tmp_dir.name
     else:
-        tmp_dir = args.path
-    filename = get_filename()
-    output_file_path = path.join(tmp_dir, filename)
+        dir_path = args.path
+    filename = get_filename(args.db)
+    output_file_path = path.join(dir_path, filename)
 
     dump_db(
         db_name=args.db,
@@ -73,17 +72,25 @@ def __main__():
         password=args.password,
     )
     if args.encrypt:
-        output_file_path = encrypt_file(output_file_path, key="teste")
+        if not args.key:
+            key_path = path.join(args.path, filename)
+            key = generate_key(key_path)
+        else:
+            key = args.key
+        output_file_path = encrypt_file(output_file_path, key=key)
     if args.zip_pwd:
         output_file_path = zip_file(file_path=output_file_path, password=args.zip_pwd)
     elif args.zip:
         output_file_path = zip_file(file_path=output_file_path)
 
-
     if args.copy:
         shutil.copy2(output_file_path, args.copy)
 
     # No final
-    if use_tmp_dir:
+    if tmp_dir:
         shutil.copy2(output_file_path, args.path)
         tmp_dir.cleanup()
+
+
+if __name__ == "__main__":
+    __main__()

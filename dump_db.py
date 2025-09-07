@@ -1,7 +1,7 @@
 import os
-import subprocess
-import sys
 import shutil
+import subprocess
+
 
 def get_pg_dump_path():
     """
@@ -11,6 +11,7 @@ def get_pg_dump_path():
     if pg_bin := shutil.which("pg_dump"):
         return pg_bin
     raise Exception("Unable to find pg_dump binary")
+
 
 def dump_db(
     db_name, output_file, host="localhost", port=5432, user=None, password=None
