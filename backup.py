@@ -4,7 +4,7 @@ import os
 import shutil
 import tempfile
 from os import path
-from src.logger import configurar_logger
+from src.logger import get_logger
 
 import psycopg
 
@@ -37,6 +37,9 @@ options.add_argument(
     "--copy", "-c", type=str, help="Armazenar cópia do backup no caminho"
 )
 options.add_argument("--key", type=str, help="Chave para criptografar o backup")
+options.add_argument(
+    "--pg-dump-path", type=str, help="Caminho para o binário do pg_dump"
+)
 
 args = parser.parse_args()
 
@@ -57,9 +60,9 @@ def get_filename(db_name: str):
 def __main__():
     filename = get_filename(args.db)
     log_path = path.join(args.path, filename + ".log")
-    logger = configurar_logger(log_path)
+    logger = get_logger(log_path)
     logger.info("Iniciando processo de backup do banco de dados.")
-    vacuum_utility(db, force=args.vacuum, full=args.full, logger=logger)
+    vacuum_utility(db, force=args.vacuum, full=args.full)
     tmp_dir = None
     if args.zip or args.zip_pwd or args.encrypt:
         tmp_dir = tempfile.TemporaryDirectory()
@@ -79,7 +82,7 @@ def __main__():
         port=args.port,
         user=args.user,
         password=args.password,
-        logger=logger,
+        pg_dump_path=args.pg_dump_path,
     )
     if not os.path.exists(output_file_path):
         logger.error(f"Arquivo de dump não encontrado: {output_file_path}")
@@ -88,10 +91,10 @@ def __main__():
         logger.info("Criptografando o backup.")
         if not args.key:
             key_path = path.join(args.path, filename)
-            key = generate_key(key_path, logger=logger)
+            key = generate_key(key_path)
         else:
             key = args.key
-        output_file_path = encrypt_file(output_file_path, key=key, logger=logger)
+        output_file_path = encrypt_file(output_file_path, key=key)
     if args.zip_pwd:
         output_file_path = zip_file(file_path=output_file_path, password=args.zip_pwd)
     elif args.zip:
@@ -104,6 +107,12 @@ def __main__():
     if tmp_dir:
         shutil.copy2(output_file_path, args.path)
         tmp_dir.cleanup()
+
+    # Delete logs if successful
+    try:
+        logger.close_and_delete()
+    except Exception as e:
+        print(f"Não foi possível remover o log: {log_path}. Erro: {e}")
 
 
 if __name__ == "__main__":
