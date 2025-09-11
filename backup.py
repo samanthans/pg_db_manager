@@ -1,15 +1,17 @@
 import argparse
 import datetime
+import os
 import shutil
 import tempfile
 from os import path
+from src.logger import configurar_logger
 
 import psycopg
 
-from dump_db import dump_db
-from encrypt import encrypt_file, generate_key
-from vacuum import vacuum_utility
-from zip_file import zip_file
+from src.dump_db import dump_db
+from src.encrypt import encrypt_file, generate_key
+from src.vacuum import vacuum_utility
+from src.zip_file import zip_file
 
 parser = argparse.ArgumentParser(
     description="Helper para manutenção de bancos postgresql"
@@ -53,16 +55,23 @@ def get_filename(db_name: str):
 
 
 def __main__():
-    vacuum_utility(db, force=args.vacuum, full=args.full)
+    filename = get_filename(args.db)
+    log_path = path.join(args.path, filename + ".log")
+    logger = configurar_logger(log_path)
+    logger.info("Iniciando processo de backup do banco de dados.")
+    vacuum_utility(db, force=args.vacuum, full=args.full, logger=logger)
     tmp_dir = None
     if args.zip or args.zip_pwd or args.encrypt:
         tmp_dir = tempfile.TemporaryDirectory()
         dir_path = tmp_dir.name
+        logger.info(
+            f"Usando diretório temporário para arquivos intermediários: {dir_path}"
+        )
     else:
         dir_path = args.path
-    filename = get_filename(args.db)
     output_file_path = path.join(dir_path, filename)
 
+    logger.info(f"Realizando dump do banco para o arquivo: {output_file_path}")
     dump_db(
         db_name=args.db,
         output_file=output_file_path,
@@ -70,14 +79,19 @@ def __main__():
         port=args.port,
         user=args.user,
         password=args.password,
+        logger=logger,
     )
+    if not os.path.exists(output_file_path):
+        logger.error(f"Arquivo de dump não encontrado: {output_file_path}")
+        raise FileNotFoundError(f"Arquivo de dump não encontrado: {output_file_path}")
     if args.encrypt:
+        logger.info("Criptografando o backup.")
         if not args.key:
             key_path = path.join(args.path, filename)
-            key = generate_key(key_path)
+            key = generate_key(key_path, logger=logger)
         else:
             key = args.key
-        output_file_path = encrypt_file(output_file_path, key=key)
+        output_file_path = encrypt_file(output_file_path, key=key, logger=logger)
     if args.zip_pwd:
         output_file_path = zip_file(file_path=output_file_path, password=args.zip_pwd)
     elif args.zip:

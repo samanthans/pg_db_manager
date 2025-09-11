@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 
 
 def get_pg_dump_path():
@@ -8,13 +9,27 @@ def get_pg_dump_path():
     Returns the path to the pg_dump binary.
     Otherwise, tries to find pg_dump in the system PATH.
     """
-    if pg_bin := shutil.which("pg_dump"):
+    print("Getting pg_dump path")
+    pg_bin = shutil.which("pg_dump")
+    if pg_bin:
         return pg_bin
+    if sys.platform.startswith("win"):
+        curr_dir = os.path.dirname(__file__)
+        pg_bin = os.path.abspath(os.path.join(curr_dir, "bin", "pg_dump.exe"))
+        print(pg_bin)
+        if os.path.isfile(pg_bin):
+            return pg_bin
     raise Exception("Unable to find pg_dump binary")
 
 
 def dump_db(
-    db_name, output_file, host="localhost", port=5432, user=None, password=None
+    db_name,
+    output_file,
+    host="localhost",
+    port=5432,
+    user=None,
+    password=None,
+    logger=None,
 ):
     """
     Exporta um banco PostgreSQL utilizando pg_dump.
@@ -29,7 +44,7 @@ def dump_db(
         "-d",
         db_name,
         "-F",
-        "c",  # custom format
+        "c",  # formato customizado
         "-f",
         output_file,
     ]
@@ -42,6 +57,10 @@ def dump_db(
 
     try:
         subprocess.run(cmd, check=True, env=env)
-        print(f"Banco exportado para {output_file}")
+        if logger:
+            logger.info(f"Banco exportado para {output_file}")
     except subprocess.CalledProcessError as e:
-        print(f"Erro exportando banco: {e}")
+        if logger:
+            logger.error(f"Erro exportando banco: {e}")
+        else:
+            print(f"Erro exportando banco: {e}")
