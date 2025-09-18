@@ -46,7 +46,7 @@ options.add_argument(
     "--keep-old",
     type=int,
     default=5,
-    help="Quantidade de backups anteriores para manter (os mais antigos serão excluidos)",
+    help="Quantidade de backups aa ser mantida (incluindo o atual; os mais antigos serão excluidos)",
 )
 
 
@@ -112,18 +112,16 @@ def __main__():
     if args.copy:
         shutil.copy2(output_file_path, args.copy)
 
-    # At the end of __main__(), after backup is complete:
+    # Finalizando:
     if args.keep_old > 0:
         cleanup_old_backups(args.db, args.path, args.keep_old)
         if args.copy:
             cleanup_old_backups(args.db, args.copy, args.keep_old)
 
-    # No final
     if tmp_dir:
         shutil.copy2(output_file_path, args.path)
         tmp_dir.cleanup()
 
-    # Delete logs if successful
     try:
         logger.close_and_delete()
     except Exception as e:
