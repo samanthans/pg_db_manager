@@ -3,15 +3,16 @@
 Ferramenta de linha de comando para manutenção de bancos PostgreSQL, incluindo backup, restauração, compactação, criptografia e limpeza (vacuum).
 
 ## Requisitos
+
 - Python 3.11+
 - PostgreSQL instalado (pg_dump e pg_restore disponíveis)
-- Instalar dependências do projeto:
+- Utilize o uv e rode `uv sync` na raiz do projeto. [Instale o UV.](https://docs.astral.sh/uv/getting-started/installation/)
+- Ou, crie um ambiente virtual python e instale as dependências do projeto:
+
   ```pwsh
   pip install -r requirements.txt
   ```
   (Se não houver requirements.txt, instale manualmente: `psycopg`)
-
-- Ou utilize o uv e rode `uv sync`.
 
 ## Estrutura
 
