@@ -20,7 +20,7 @@ def dump_db(
         pg_dump_path = shutil.which("pg_dump")
         if not pg_dump_path:
             raise Exception(
-                "pg_dump não encontrado, favor fornecer o caminho ou adicionar ao PATH"
+                "pg_dump não encontrado, favor fornecer o caminho com --pg-dump-path ou adicionar ao PATH"
             )
     pg_dump_bin = pg_dump_path
     cmd = [

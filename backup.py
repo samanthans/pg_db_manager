@@ -4,12 +4,13 @@ import os
 import shutil
 import tempfile
 from os import path
-from src.logger import get_logger
 
 import psycopg
 
+from src.cleanup import cleanup_old_backups
 from src.dump_db import dump_db
 from src.encrypt import encrypt_file, generate_key
+from src.logger import get_logger
 from src.vacuum import vacuum_utility
 from src.zip_file import zip_file
 
@@ -40,6 +41,14 @@ options.add_argument("--key", type=str, help="Chave para criptografar o backup")
 options.add_argument(
     "--pg-dump-path", type=str, help="Caminho para o binário do pg_dump"
 )
+
+options.add_argument(
+    "--keep-old",
+    type=int,
+    default=5,
+    help="Quantidade de backups anteriores para manter (os mais antigos serão excluidos)",
+)
+
 
 args = parser.parse_args()
 
@@ -102,6 +111,12 @@ def __main__():
 
     if args.copy:
         shutil.copy2(output_file_path, args.copy)
+
+    # At the end of __main__(), after backup is complete:
+    if args.keep_old > 0:
+        cleanup_old_backups(args.db, args.path, args.keep_old)
+        if args.copy:
+            cleanup_old_backups(args.db, args.copy, args.keep_old)
 
     # No final
     if tmp_dir:
